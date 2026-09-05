@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      - name: Upgrade npm (matches the npm major the committed package-lock.json was generated with; an older bundled npm crashes with "Cannot read properties of null (reading 'edgesOut')" building the ideal tree)
+        run: npm install -g npm@11
       - run: npm ci
       - name: Pin vitest test matrix version
         run: npm install --no-save "vitest@^${{ matrix.vitest-version }}"
