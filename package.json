@@ -36,7 +36,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "vitest": ">=1.0.0"
+    "vitest": ">=3.0.0"
   },
   "devDependencies": {
     "@semantic-release/exec": "^6.0.3",

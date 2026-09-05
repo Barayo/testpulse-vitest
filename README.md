@@ -6,7 +6,8 @@ TestPulse case key, and auto-submits a JUnit XML report the reporter
 builds directly from the run (matching each tagged test to an existing
 case).
 
-> Requires `vitest` 1.0 or later.
+> Requires `vitest` 3.0 or later (the CI matrix tests 3.x/4.x/5.x —
+> this is what's actually verified, not an assumed floor).
 
 Unlike every prior JS testing-framework plugin in this family
 (Jest/Jasmine/Mocha), Vitest has a genuine, native, first-party
@@ -128,10 +129,15 @@ surface, because there is no filesystem path involved at all.
 
 > **Combining `testpulse-vitest` with Vitest's built-in `html` reporter
 > embeds your attachment bytes into that reporter's own output
-> bundle.** This was verified empirically (a `testpulse_attachment`
-> annotation's base64 body was found intact inside
-> `.vitest/ui/html.meta.json.gz`, the metadata bundle behind the `html`
-> reporter's report). If you publish that bundle as a CI artifact or a
+> bundle — and worse than just buried in a metadata blob.** This was
+> verified empirically: a `testpulse_attachment` annotation's base64
+> body was found intact inside `.vitest/ui/html.meta.json.gz`, the
+> metadata bundle behind the `html` reporter's report, but it is
+> **also** written out as its own individually-fetchable static file
+> (`html/data/<hash>.png`, raw and unencoded) alongside the report's
+> other static assets. Anyone who can browse the published `html/`
+> bundle can fetch that file directly, not just find the bytes buried
+> in a gzip blob. If you publish that bundle as a CI artifact or a
 > preview page (a common pattern — Vitest's own CLI output suggests
 > `npx vite preview` on it), any screenshot you attached via `Attach()`
 > for TestPulse's own private import rides along into that much more
