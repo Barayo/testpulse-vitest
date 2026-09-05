@@ -18,11 +18,14 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      - name: Upgrade npm (matches the npm major the committed package-lock.json was generated with; an older bundled npm crashes with "Cannot read properties of null (reading 'edgesOut')" building the ideal tree)
-        run: npm install -g npm@11
       - run: npm ci
       - name: Pin vitest test matrix version
-        run: npm install --no-save "vitest@^${{ matrix.vitest-version }}"
+        # --legacy-peer-deps: vitest 5 requires @types/node ^22 || >=24
+        # as a peerOptional, which strict peer resolution refuses to
+        # reconcile against this project's own @types/node ^20 (a real,
+        # version-specific conflict found running this exact matrix
+        # locally, not a hypothetical one).
+        run: npm install --no-save --legacy-peer-deps "vitest@^${{ matrix.vitest-version }}"
       - run: npm run build
       - run: npm run lint
       - run: npm test -- --ci

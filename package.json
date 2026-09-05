@@ -43,10 +43,12 @@
     "@semantic-release/git": "^10.0.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.17.9",
+    "@vitest/runner": "^3.2.7",
     "jest": "^29.7.0",
     "semantic-release": "^24.2.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.2",
+    "vite": "^7.1.0",
     "vitest": "^3.2.7"
   }
 }
