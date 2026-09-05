@@ -84,7 +84,10 @@ describe('TestPulseReporter', () => {
       ]) as never,
     );
     await runEnd(reporter);
-    expect(readResultMarker()).toEqual({ present: true, marker: { failed: true } });
+    expect(readResultMarker()).toEqual({
+      present: true,
+      marker: { failed: true, reason: expect.stringContaining('LOGIN-42') },
+    });
   });
 
   it('a 207 response with default config suggests enabling failOnUnmatched', async () => {
@@ -119,7 +122,7 @@ describe('TestPulseReporter', () => {
     expect(allLogs).toContain('failing the build');
   });
 
-  it('a network error writes failed:true regardless of failOnUnmatched', async () => {
+  it('a network error writes failed:true with the real error as reason, not a generic fallback', async () => {
     mockedHttpClient.postImport.mockRejectedValue(new Error('connection refused'));
     const reporter = makeReporter();
     reporter.onTestModuleEnd?.(
@@ -128,10 +131,14 @@ describe('TestPulseReporter', () => {
       ]) as never,
     );
     await runEnd(reporter);
-    expect(readResultMarker()).toEqual({ present: true, marker: { failed: true } });
+    const outcome = readResultMarker();
+    expect(outcome).toEqual({ present: true, marker: { failed: true, reason: expect.stringContaining('connection refused') } });
+    // check's own generic fallback message must never be needed here --
+    // the real cause is always available and must be threaded through.
+    expect((outcome as { marker: { reason: string } }).marker.reason).not.toContain('failOnUnmatched');
   });
 
-  it('a 5xx response writes failed:true', async () => {
+  it('a 5xx response writes failed:true with the status in the reason, not a generic fallback', async () => {
     mockedHttpClient.postImport.mockResolvedValue({ status: 500, body: { error: 'boom' } });
     const reporter = makeReporter();
     reporter.onTestModuleEnd?.(
@@ -140,7 +147,10 @@ describe('TestPulseReporter', () => {
       ]) as never,
     );
     await runEnd(reporter);
-    expect(readResultMarker()).toEqual({ present: true, marker: { failed: true } });
+    expect(readResultMarker()).toEqual({
+      present: true,
+      marker: { failed: true, reason: expect.stringContaining('500') },
+    });
   });
 
   it('a genuinely failing test still produces a failure element and still submits', async () => {
@@ -246,10 +256,16 @@ describe('TestPulseReporter', () => {
       ]) as never,
     );
     await runEnd(reporter);
-    expect(readResultMarker()).toEqual({ present: true, marker: { failed: true } });
+    expect(readResultMarker()).toEqual({
+      present: true,
+      marker: { failed: true, reason: expect.stringContaining('connection refused') },
+    });
     const allCalls = [...logSpy.mock.calls, ...errorSpy.mock.calls].flat().join(' ');
     expect(allCalls).not.toContain('s3cr3t');
     expect(allCalls).toContain('connection refused');
+    // The reason threaded through to the marker (and thus to `check`'s
+    // output) must also never carry the credential.
+    expect((readResultMarker() as { marker: { reason: string } }).marker.reason).not.toContain('s3cr3t');
   });
 
   it('a dry-run preview 5xx response also fails closed', async () => {
@@ -261,7 +277,10 @@ describe('TestPulseReporter', () => {
       ]) as never,
     );
     await runEnd(reporter);
-    expect(readResultMarker()).toEqual({ present: true, marker: { failed: true } });
+    expect(readResultMarker()).toEqual({
+      present: true,
+      marker: { failed: true, reason: expect.stringContaining('500') },
+    });
     expect(mockedHttpClient.postImport).not.toHaveBeenCalled();
   });
 

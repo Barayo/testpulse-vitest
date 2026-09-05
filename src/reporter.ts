@@ -157,9 +157,17 @@ export class TestPulseReporter implements Reporter {
       // this change's own gating review) means a broken
       // TESTPULSE_TOKEN/TESTPULSE_URL never silently reports a green
       // build in exactly the mode someone reaches for to check that.
+      const reason = `dry-run fetch failed: ${extractError(e)} (url: ${redactUrl(url)})`;
       // eslint-disable-next-line no-console
-      console.error(`testpulse-vitest: dry-run fetch failed: ${extractError(e)} (url: ${redactUrl(url)})`);
-      writeResultMarker({ failed: true });
+      console.error(`testpulse-vitest: ${reason}`);
+      // Threading the real reason through to the marker is what lets
+      // `check` -- the step actually inspected for "why did this fail"
+      // in the documented CI pattern -- report the true cause, instead
+      // of a generic fallback message that's actively misleading for
+      // every failure that isn't a missing-config skip. Found
+      // post-implementation (Paco): the console output was always
+      // correct, but the marker (and thus `check`) discarded it.
+      writeResultMarker({ failed: true, reason });
     }
   }
 
@@ -212,23 +220,28 @@ export class TestPulseReporter implements Reporter {
               ? 'testpulse-vitest: failing the build (failOnUnmatched is enabled)'
               : 'testpulse-vitest: enable failOnUnmatched to make this a hard failure',
           );
-          writeResultMarker({ failed: failOnUnmatched });
+          const reason = failOnUnmatched
+            ? `${unmatched.length} unmatched case key(s), failOnUnmatched is enabled: ${unmatched.map((u) => u.caseKey).join(', ')}`
+            : undefined;
+          writeResultMarker({ failed: failOnUnmatched, reason });
         } else {
           writeResultMarker({ failed: false });
         }
       } else {
+        const reason = `submission failed: status ${result.status} (url: ${redactUrl(url)})`;
         // eslint-disable-next-line no-console
-        console.error(`testpulse-vitest: submission failed: status ${result.status} (url: ${redactUrl(url)})`);
-        writeResultMarker({ failed: true });
+        console.error(`testpulse-vitest: ${reason}`);
+        writeResultMarker({ failed: true, reason });
       }
     } catch (e) {
       // Only the extracted message and a credential-stripped URL are
       // logged -- never the raw caught error object, since most JS HTTP
       // clients' error objects carry the outgoing request's headers,
       // including Authorization.
+      const reason = `submission failed: ${extractError(e)} (url: ${redactUrl(url)})`;
       // eslint-disable-next-line no-console
-      console.error(`testpulse-vitest: submission failed: ${extractError(e)} (url: ${redactUrl(url)})`);
-      writeResultMarker({ failed: true });
+      console.error(`testpulse-vitest: ${reason}`);
+      writeResultMarker({ failed: true, reason });
     }
   }
 }

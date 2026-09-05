@@ -23,8 +23,6 @@ function markerPath(): string {
  * when the run itself failed) -- but relying on that isn't part of
  * Vitest's documented reporter contract, so this marker-plus-`check`
  * mechanism remains the supported path regardless.
- * how a submission error or an unmatched-case-with-failOnUnmatched
- * outcome actually fails the build.
  */
 export function writeResultMarker(marker: ResultMarker): void {
   const dir = path.dirname(markerPath());
