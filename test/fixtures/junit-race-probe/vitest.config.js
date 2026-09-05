@@ -6,9 +6,11 @@
 // reads this file at all) reads the junit output file synchronously,
 // with no artificial delay, inside its own onTestRunEnd -- exactly
 // mirroring this session's original manual repro -- and separately
-// reads it again after an artificial 50ms delay, recording both so the
-// e2e test can assert the immediate read is incomplete while the
-// delayed read is complete.
+// polls for the complete file (rather than sleeping a fixed delay,
+// which a real CI run showed can itself be too short on a slower
+// runner than local dev -- polling makes the "control" read
+// deterministic regardless of environment speed, while the immediate,
+// zero-wait read still genuinely demonstrates the race).
 const fs = require('fs');
 const path = require('path');
 
@@ -25,12 +27,20 @@ class JunitRaceProbeReporter {
           return '';
         }
       };
+      const isComplete = (content) => content.includes('</testsuites>');
       const immediate = readSafely();
-      setTimeout(() => {
+
+      const deadline = Date.now() + 5000;
+      const pollUntilComplete = () => {
         const delayed = readSafely();
-        fs.writeFileSync(probeResultPath, JSON.stringify({ immediate, delayed }));
-        resolve();
-      }, 50);
+        if (isComplete(delayed) || Date.now() >= deadline) {
+          fs.writeFileSync(probeResultPath, JSON.stringify({ immediate, delayed }));
+          resolve();
+        } else {
+          setTimeout(pollUntilComplete, 20);
+        }
+      };
+      pollUntilComplete();
     });
   }
 }
